@@ -6,19 +6,44 @@ from websockets import WebSocketServerProtocol
 import json
 import asyncpg
 
-async def data_from_db():
+import boto3
+import settings
+
+async def db(message=None):
     conn = await asyncpg.connect(user='postgres', password='123',
                                  database='chat', host='127.0.0.1')
-    values = await conn.fetch('SELECT * FROM message')
-    await conn.close()
-    return values
+    if not message:
+        values = await conn.fetch('SELECT * FROM message')
+        await conn.close()
+        return values
+    else:
+        await conn.fetch(f"INSERT INTO message(author, content) VALUES('{message['from']}', '{message['message']}')")
+        await conn.close()
+    
+
+
 
 
 logging.basicConfig(level=logging.INFO)
 
+
+def save_file(data, filename, author):
+    with open("upload/" + filename, "wb") as f:
+        f.write(data) 
+    s3 = boto3.client('s3', region_name='eu-central-1', 
+                            aws_access_key_id=settings.AWS_ACCESS_KEY_ID, 
+                            aws_secret_access_key=settings.AWS_SECRET_ACCESS_KEY)
+    s3.upload_file(Filename='upload/' + filename, 
+                    Bucket=settings.AWS_STORAGE_BUCKET_NAME, 
+                    Key='upload/' + filename)
+    s3_url = f"https://{settings.AWS_STORAGE_BUCKET_NAME}.s3.eu-central-1.amazonaws.com/upload/{filename}"
+    return {"command":"new_message",
+            "message": s3_url,
+            "filename": filename,
+            "from": author}   
+
 class Server:
     clients = set()
-    #conn = connect_to_db()
 
     async def register(self, ws: WebSocketServerProtocol) -> None:
         self.clients.add(ws)
@@ -41,18 +66,29 @@ class Server:
 
     async def distribute(self, ws: WebSocketServerProtocol) -> None:
         async for data in ws:
-            message = json.loads(data)
-            if message['command'] == 'fetch_messages':
-                await self.fetch_messages(ws)
-            else:
-                message = {'command': 'new_message',
-                            'message': 'hello from server',
-                            'from': 'server'}
-            
-                await self.send_to_clients(message)
+            if isinstance(data, bytes):
+                new_message = save_file(data, self.name_file, self.author)
+                await self.send_to_clients(new_message)
+            else:   
+                message = json.loads(data)
+                if message['command'] == 'fetch_messages':
+                    await self.fetch_messages(ws)
+
+                elif message['command'] == 'new_message':
+                    await db(message)
+                    message = {'command': 'new_message',
+                                'message': message['message'],
+                                'from': message['from']}
+                    await self.send_to_clients(message)
+                elif message['command'] == 'file':
+                    self.author = message['author']
+                    self.name_file = message['name']
+
+
+
 
     async def fetch_messages(self, ws):
-        values = await data_from_db()
+        values = await db()
         messages = []
         for i in values:
             messages.append({'command': 'new_message',
@@ -62,7 +98,7 @@ class Server:
         await ws.send(json.dumps(messages))
     
 server = Server()
-start_server = websockets.serve(server.ws_handler, "localhost", 5000)
+start_server = websockets.serve(server.ws_handler, "localhost", 5000, max_size=500000000)
 loop = asyncio.get_event_loop()
 loop.run_until_complete(start_server)
 loop.run_forever()

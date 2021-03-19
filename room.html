@@ -116,10 +116,10 @@
     reader.onload = function(e) {
       rawData = e.target.result;
       let data = {
-        'author': userName,
+        'author': 'userName',
         'type': file.type,
         'name': file.name,
-        'command': 'save_session'
+        'command': 'file'
 
         //"bytes_data": String.fromCharCode.apply(null, new Uint16Array(rawData))
       };
