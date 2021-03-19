@@ -1,0 +1,141 @@
+<!DOCTYPE html>
+<html>
+<head>
+</head>
+
+
+<body>
+    <h1>ROOM 1</h1>
+
+      <ul id="chat-log">
+        <!--<li class="sent">
+          <img src="http://emilcarlsson.se/assets/mikeross.png" alt="" />
+          <p></p>
+        </li>-->
+        <!--<li class="replies">
+          <img src="http://emilcarlsson.se/assets/harveyspecter.png" alt="" />
+          <p></p>
+        </li>-->
+      </ul>
+
+
+      <input id="chat-message-input" type="text" placeholder="Write your message...">
+      <input type="file" id="filename" />
+      <input type="button" value="Upload" onclick="sendFile()" />
+
+      <button id="chat-message-submit" class="submit"></button>
+
+
+<!--<script src='https://code.jquery.com/jquery-2.2.4.min.js'></script>
+
+<script src="{% static 'main.js' %}"></script>
+<script src="{% static 'reconnecting-websocket.js' %}"></script>-->
+
+<script>
+
+  //const roomName = JSON.parse(document.getElementById('room-name').textContent);
+
+  /*let roomName = {{ room_name_json }};
+  let userName = {{ username }};
+  console.log(roomName);
+  console.log(userName);*/
+
+  const chatSocket = new WebSocket('ws://localhost:5000');
+  
+
+  chatSocket.onopen = function(e){
+    console.log("fetch");
+    fetchMessages();
+  }
+
+  function fetchMessages(){
+    console.log("fetch message command");
+    chatSocket.send(JSON.stringify({'command': 'fetch_messages'}));
+    //chatSocket.send("Vitaliy");
+  }
+
+  chatSocket.onmessage = function(e) {
+      const data = JSON.parse(e.data);
+      console.log("data receive", data.length);
+      if (data['command'] === 'new_message'){
+        createMessage(data);
+      } else {
+        //!!!!!!
+        for(let i=0; i<data.length; i++){
+          createMessage(data[i]);
+        }
+      }
+  };
+
+  function createMessage(data){
+    let msgListTag = document.createElement('li');
+    let tag = document.createElement('p');  
+    tag.textContent = `${data['time']} ${data['from']} ${data['message']}`;
+    msgListTag.appendChild(tag);
+    document.querySelector('#chat-log').appendChild(msgListTag);
+    console.log("Create message");
+  }
+
+  chatSocket.onclose = function(e) {
+      console.error('Chat socket closed unexpectedly');
+  };
+
+  document.querySelector('#chat-message-input').focus();
+  document.querySelector('#chat-message-input').onkeyup = function(e) {
+      if (e.keyCode === 13) {  // enter, return
+        document.querySelector('#chat-message-submit').click();
+
+      }
+  };
+
+  document.querySelector('#chat-message-submit').onclick = function(e) {
+      const messageInputDom = document.querySelector('#chat-message-input');
+      const message = messageInputDom.value;
+      console.log("!!!");
+      chatSocket.send(JSON.stringify({
+          'command': 'new_message',
+          'message': message,
+          'from': 'userName',
+      }));
+      messageInputDom.value = '';
+  };
+
+
+
+
+  function sendFile(){
+    chatSocket.binaryType = "arraybuffer";
+    let file = document.getElementById('filename').files[0];
+    console.log(file.type);
+    console.log(file.name);
+    let reader = new FileReader();
+    let rawData = new ArrayBuffer();
+    reader.loadend = function() {
+
+            }
+    reader.onload = function(e) {
+      rawData = e.target.result;
+      let data = {
+        'author': userName,
+        'type': file.type,
+        'name': file.name,
+        'command': 'save_session'
+
+        //"bytes_data": String.fromCharCode.apply(null, new Uint16Array(rawData))
+      };
+      
+      chatSocket.send(JSON.stringify(data));
+      chatSocket.send(rawData);
+      console.log("file pass");
+      alert("the File has been transferred.");
+    }
+
+    reader.readAsArrayBuffer(file);
+  }
+
+
+
+</script>
+
+</body>
+</html>
