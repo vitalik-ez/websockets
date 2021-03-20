@@ -11,8 +11,9 @@ import settings
 from datetime import datetime
 
 async def db(message=None):
-    conn = await asyncpg.connect(user='postgres', password='123',
-                                 database='chat', host='127.0.0.1')
+    conn = await asyncpg.connect(user='vitaliy', password='kpichat2021', 
+                                 port=5432, database='chat', 
+                                 host='database-1.cf5sj1knwsu7.eu-central-1.rds.amazonaws.com')
     if not message:
         values = await conn.fetch('SELECT * FROM message ORDER BY time DESC LIMIT 10;')
         await conn.close()
