@@ -69,8 +69,18 @@
 
   function createMessage(data){
     let msgListTag = document.createElement('li');
-    let tag = document.createElement('p');  
-    tag.textContent = `${data['time']} ${data['from']} ${data['message']}`;
+    let tag = document.createElement('p');
+
+    if (data['message'].startsWith('https://kpi-chat')){
+      console.log(data);
+      let tag_a = document.createElement('a');
+      tag_a.href = data['message'];
+      tag_a.textContent = ` ${data['filename']}`;
+      tag.textContent = `${data['time']} ${data['from']}`;
+      tag.appendChild(tag_a);
+    } else {
+      tag.textContent = `${data['time']} ${data['from']} ${data['message']}`;
+    }
     msgListTag.appendChild(tag);
     document.querySelector('#chat-log').appendChild(msgListTag);
     console.log("Create message");

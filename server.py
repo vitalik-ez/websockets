@@ -8,18 +8,19 @@ import asyncpg
 
 import boto3
 import settings
+from datetime import datetime
 
 async def db(message=None):
     conn = await asyncpg.connect(user='postgres', password='123',
                                  database='chat', host='127.0.0.1')
     if not message:
-        values = await conn.fetch('SELECT * FROM message')
+        values = await conn.fetch('SELECT * FROM message ORDER BY time DESC LIMIT 10;')
         await conn.close()
+        values.reverse()
         return values
     else:
-        await conn.fetch(f"INSERT INTO message(author, content) VALUES('{message['from']}', '{message['message']}')")
+        await conn.fetch(f"INSERT INTO message(author, content, filename) VALUES('{message['from']}', '{message['message']}', '{message.get('filename')}')")
         await conn.close()
-    
 
 
 
@@ -40,7 +41,8 @@ def save_file(data, filename, author):
     return {"command":"new_message",
             "message": s3_url,
             "filename": filename,
-            "from": author}   
+            "from": author,
+            "time": datetime.now().strftime("%d.%m.%Y %H:%M:%S")}   
 
 class Server:
     clients = set()
@@ -60,31 +62,32 @@ class Server:
     async def ws_handler(self, ws: WebSocketServerProtocol, url: str) -> None:
         await self.register(ws)
         try:
-            await self.distribute(ws)
+            while True:
+                message = await ws.recv()
+                await self.distribute(ws, message)
         finally:
             await self.unregister(ws)
 
-    async def distribute(self, ws: WebSocketServerProtocol) -> None:
-        async for data in ws:
-            if isinstance(data, bytes):
+    async def distribute(self, ws, data):
+        if isinstance(data, bytes):
                 new_message = save_file(data, self.name_file, self.author)
+                await db(new_message)
                 await self.send_to_clients(new_message)
-            else:   
-                message = json.loads(data)
-                if message['command'] == 'fetch_messages':
-                    await self.fetch_messages(ws)
+        else:   
+            message = json.loads(data)
+            if message['command'] == 'fetch_messages':
+                await self.fetch_messages(ws)
 
-                elif message['command'] == 'new_message':
-                    await db(message)
-                    message = {'command': 'new_message',
-                                'message': message['message'],
-                                'from': message['from']}
-                    await self.send_to_clients(message)
-                elif message['command'] == 'file':
-                    self.author = message['author']
-                    self.name_file = message['name']
-
-
+            elif message['command'] == 'new_message':
+                await db(message)
+                message = {'command': 'new_message',
+                            'message': message['message'],
+                            'from': message['from'],
+                            "time": datetime.now().strftime("%d.%m.%Y %H:%M:%S")}
+                await self.send_to_clients(message)
+            elif message['command'] == 'file':
+                self.author = message['author']
+                self.name_file = message['name']
 
 
     async def fetch_messages(self, ws):
