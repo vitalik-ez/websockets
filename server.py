@@ -65,6 +65,8 @@ class Server:
             while True:
                 message = await ws.recv()
                 await self.distribute(ws, message)
+        except websockets.exceptions.ConnectionClosedOK as e:
+            print(e)
         finally:
             await self.unregister(ws)
 
@@ -97,6 +99,7 @@ class Server:
             messages.append({'command': 'new_message',
                             'message': i['content'],
                             'from': i['author'],
+                            'filename': i['filename'],
                             'time': i['time'].strftime("%d.%m.%Y %H:%M:%S")})
         await ws.send(json.dumps(messages))
     

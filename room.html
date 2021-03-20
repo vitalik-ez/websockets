@@ -56,7 +56,6 @@
 
   chatSocket.onmessage = function(e) {
       const data = JSON.parse(e.data);
-      console.log("data receive", data.length);
       if (data['command'] === 'new_message'){
         createMessage(data);
       } else {
@@ -83,7 +82,6 @@
     }
     msgListTag.appendChild(tag);
     document.querySelector('#chat-log').appendChild(msgListTag);
-    console.log("Create message");
   }
 
   chatSocket.onclose = function(e) {
