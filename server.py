@@ -10,6 +10,7 @@ import boto3
 import settings
 from datetime import datetime
 
+
 async def db(message=None):
     conn = await asyncpg.connect(user='vitaliy', password='kpichat2021', 
                                  port=5432, database='chat', 
@@ -23,6 +24,28 @@ async def db(message=None):
         await conn.fetch(f"INSERT INTO message(author, content, filename) VALUES('{message['from']}', '{message['message']}', '{message.get('filename')}')")
         await conn.close()
 
+
+async def login(ws, message):
+    conn = await asyncpg.connect(user='vitaliy', password='kpichat2021', 
+                                 port=5432, database='chat', 
+                                 host='database-1.cf5sj1knwsu7.eu-central-1.rds.amazonaws.com')
+
+    login = await conn.fetch(f"SELECT login FROM users WHERE login='{message['login']}' AND password='{message['password']}'")
+    print(login)
+    if len(login) == 0:
+        await ws.send(json.dumps({'login': False}))
+    else:
+        await ws.send(json.dumps({'login': True, 'username': login[0]['login']}))
+    await conn.close()
+
+async def register(ws, message):
+    conn = await asyncpg.connect(user='vitaliy', password='kpichat2021', 
+                                 port=5432, database='chat', 
+                                 host='database-1.cf5sj1knwsu7.eu-central-1.rds.amazonaws.com')
+
+    await conn.fetch(f"INSERT INTO users(login, email, password) VALUES('{message['login']}', '{message['email']}', '{message['password']}');")
+    await ws.send(json.dumps({'register': True}))
+    await conn.close()
 
 
 
@@ -91,6 +114,12 @@ class Server:
             elif message['command'] == 'file':
                 self.author = message['author']
                 self.name_file = message['name']
+
+            elif message['command'] == 'login':
+                await login(ws, message)
+
+            elif message['command'] == 'register':
+                await register(ws, message)
 
 
     async def fetch_messages(self, ws):

@@ -1,0 +1,68 @@
+<!DOCTYPE html>
+<html>
+<head>
+</head>
+
+
+<body>
+    <h1>Авторизація</h1>
+
+    <!--<input id="login" type="text" name="login" />
+    <input id="password" type="password" name="password" />
+    <button onclick="check()">Увійти</button>-->
+
+    <label for="login">Login</label><br>
+    <input id="login" type="text" placeholder="Enter login"><br><br>
+    <label for="login">Password</label><br>
+    <input id="password" type="password" placeholder="Enter password"><br><br>
+    <button id="submit" type="submit">Увійти</button><br><br>
+    <a href="register.html">Зареєструватися</a>
+
+
+<script>
+  
+  const chatSocket = new WebSocket('ws://localhost:5000');
+  
+  chatSocket.onopen = function(e){
+    console.log('WebSocket onopen');
+  }
+
+  chatSocket.onmessage = function(e) {
+    const data = JSON.parse(e.data);
+    if (data['login'] === true){
+      document.location.href = 'room.html?login=' + data['username'];
+    } else {
+      alert('Неправильно введені дані');
+    }
+    console.log("Receive answer from server", data);
+  };
+
+  chatSocket.onclose = function(e) {
+    console.error('Chat socket closed unexpectedly');
+  };
+
+
+  document.querySelector('#login').focus();
+  document.querySelector('#password').onkeyup = function(e) {
+      if (e.keyCode === 13) {  // enter, return
+        document.querySelector('#submit').click();
+
+      }
+  };
+
+  document.querySelector('#submit').onclick = function(e) {
+      const login = document.querySelector('#login').value;
+      const password = document.querySelector('#password').value;
+      chatSocket.send(JSON.stringify({
+          'command': 'login',
+          'login': login,
+          'password': password,
+      }));
+      login.value = '';
+      password.value = '';
+  };
+
+</script>
+
+</body>
+</html>

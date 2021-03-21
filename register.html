@@ -1,0 +1,79 @@
+<!DOCTYPE html>
+<html>
+<head>
+</head>
+
+
+<body>
+    <h1>Реєстрація</h1>
+
+    <label for="login">Login</label>
+    <br>
+    <input id="login" type="text" placeholder="Enter login"><br><br>
+    <label for="email">Email</label><br>
+    <input id="email" type="text" placeholder="Enter email"><br><br>
+    <label for="password">Password</label><br>
+    <input id="password" type="password" placeholder="Enter password"><br><br>
+    <label for="repeat_password">Repeat password</label><br>
+    <input id="repeat_password" type="password" placeholder="Enter password again"><br><br>
+    <button id="submit" type="submit">Зареєсруватися</button>
+
+
+<script>
+  
+  const chatSocket = new WebSocket('ws://localhost:5000');
+  
+  chatSocket.onopen = function(e){
+    console.log('WebSocket onopen');
+  }
+
+  chatSocket.onmessage = function(e) {
+    const data = JSON.parse(e.data);
+    if (data['register'] === true){
+      document.location.href = 'authorization.html';
+    } else {
+      alert('Виникли труднощі з реєстрацією. Спробуйте ще раз.');
+    }
+    
+
+  };
+
+  chatSocket.onclose = function(e) {
+    console.error('Chat socket closed unexpectedly');
+  };
+
+
+  document.querySelector('#login').focus();
+  document.querySelector('#repeat_password').onkeyup = function(e) {
+      if (e.keyCode === 13) {  // enter, return
+        document.querySelector('#submit').click();
+
+      }
+  };
+
+  document.querySelector('#submit').onclick = function(e) {
+      const login = document.querySelector('#login').value;
+      const password = document.querySelector('#password').value;
+      const repeat_password = document.querySelector('#repeat_password').value;
+      const email = document.querySelector('#email').value;
+      if (password === repeat_password) {
+        chatSocket.send(JSON.stringify({
+          'command': 'register',
+          'login': login,
+          'password': password,
+          'email': email,
+        }));
+        login.value = '';
+        password.value = '';
+        repeat_password.value = '';
+        email.value = '';
+      } else {
+        alert('Паролі не співпадають!');
+      }
+      
+  };
+
+</script>
+
+</body>
+</html>

@@ -1,13 +1,14 @@
 <!DOCTYPE html>
 <html>
 <head>
+  <link rel="stylesheet" href="style.css" type="text/css">
 </head>
 
 
-<body>
-    <h1>ROOM 1</h1>
+<body class="root">
+    <h1 class="title">НАШ ЧАТ</h1>
 
-      <ul id="chat-log">
+      <ul id="chat-log" class="messages">
         <!--<li class="sent">
           <img src="http://emilcarlsson.se/assets/mikeross.png" alt="" />
           <p></p>
@@ -19,26 +20,16 @@
       </ul>
 
 
-      <input id="chat-message-input" type="text" placeholder="Write your message...">
-      <input type="file" id="filename" />
+      <textarea id="chat-message-input" type="text" placeholder="Write your message..."></textarea>
+      <br>
+      <input type="file" id="filename" class="mar-50" />
       <input type="button" value="Upload" onclick="sendFile()" />
 
-      <button id="chat-message-submit" class="submit"></button>
-
-
-<!--<script src='https://code.jquery.com/jquery-2.2.4.min.js'></script>
-
-<script src="{% static 'main.js' %}"></script>
-<script src="{% static 'reconnecting-websocket.js' %}"></script>-->
+      <button id="chat-message-submit" class="submit">Надіслати</button>
+      <br>
 
 <script>
-
-  //const roomName = JSON.parse(document.getElementById('room-name').textContent);
-
-  /*let roomName = {{ room_name_json }};
-  let userName = {{ username }};
-  console.log(roomName);
-  console.log(userName);*/
+  let username = String(document.location.href).split('=')[1];
 
   const chatSocket = new WebSocket('ws://localhost:5000');
   
@@ -49,9 +40,7 @@
   }
 
   function fetchMessages(){
-    console.log("fetch message command");
     chatSocket.send(JSON.stringify({'command': 'fetch_messages'}));
-    //chatSocket.send("Vitaliy");
   }
 
   chatSocket.onmessage = function(e) {
@@ -68,20 +57,30 @@
 
   function createMessage(data){
     let msgListTag = document.createElement('li');
+    msgListTag.classList.add('message');
     let tag = document.createElement('p');
-
+    let time = document.createElement('p');
+    let user = document.createElement('p');
+    user.classList.add('admin');
+    time.classList.add('time');
+    tag.classList.add('text');
     if (data['message'].startsWith('https://kpi-chat')){
       console.log(data);
       let tag_a = document.createElement('a');
       tag_a.href = data['message'];
       tag_a.textContent = ` ${data['filename']}`;
-      tag.textContent = `${data['time']} ${data['from']}`;
+      time.textContent = `${data['time']}`;
+      user.textContent = `${data['from']}`;
       tag.appendChild(tag_a);
     } else {
-      tag.textContent = `${data['time']} ${data['from']} ${data['message']}`;
+      time.textContent = `${data['time']}`;
+      user.textContent = `${data['from']}`;
+      tag.textContent = `${data['message']}`;
     }
+    msgListTag.appendChild(user);
     msgListTag.appendChild(tag);
     document.querySelector('#chat-log').appendChild(msgListTag);
+    document.querySelector('#chat-log').appendChild(time);
   }
 
   chatSocket.onclose = function(e) {
@@ -99,11 +98,10 @@
   document.querySelector('#chat-message-submit').onclick = function(e) {
       const messageInputDom = document.querySelector('#chat-message-input');
       const message = messageInputDom.value;
-      console.log("!!!");
       chatSocket.send(JSON.stringify({
           'command': 'new_message',
           'message': message,
-          'from': 'userName',
+          'from': username,
       }));
       messageInputDom.value = '';
   };
@@ -124,7 +122,7 @@
     reader.onload = function(e) {
       rawData = e.target.result;
       let data = {
-        'author': 'userName',
+        'author': username,
         'type': file.type,
         'name': file.name,
         'command': 'file'
